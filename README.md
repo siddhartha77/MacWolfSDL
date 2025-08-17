@@ -5,12 +5,15 @@ Preserves compatibility with Third Encounter scenarios.
 
 ## Running
 
-The Mac binary `Wolfenstein 3D` and the `Levels/` subdirectory need to be taken
-from the original game install and placed in the same folder as the MacWolfSDL
-executable. All the necessary files can be downloaded at:
+The Mac binary `Wolfenstein 3D` and the `Levels/` subdirectory need to be provided
+from the original game install. All the necessary files can be downloaded at:
 https://archive.org/details/macintosh-wolfenstein-3d-macbinary
 
-Alternatively the files can be placed in a platform-specific config folder:
+On Windows and Linux, the resources should be placed in the same folder as the
+MacWolfSDL executable. On macOS they will need to be moved inside the bundle's
+`Contents/Resources` folder (this can be accessed with `Show Package Contents`
+in the application's context menu). Alternatively, the resources can be placed
+in the game's platform-specific data/configuration folder:
 
 - Windows: `C:\Users\<USER>\AppData\Roaming\macwolfsdl\`
 - macOS: `/Users/<USER>/Library/Application Support/macwolfsdl/`
