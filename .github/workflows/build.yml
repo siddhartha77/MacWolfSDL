@@ -32,7 +32,7 @@ jobs:
     runs-on: macos-15
     steps:
     - uses: actions/checkout@v4
-    - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" . && cmake --build build
+    - run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 . && cmake --build build
     - run: strip build/MacWolfSDL.app/Contents/MacOS/MacWolfSDL
     - run: cd ./build && hdiutil create -volname MacWolfSDL -srcfolder ./MacWolfSDL.app -srcfolder ../LICENSES -srcfolder ../README.md -ov -format UDZO ./macwolfsdl-macos-${{ github.sha }}.dmg
     - uses: actions/upload-artifact@v4
