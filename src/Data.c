@@ -65,6 +65,7 @@ Word bspcoord[4];			/* Rect for the BSP search */
 Word TicCount;				/* Ticks since last screen draw */
 Word LastTicCount;			/* Tick value at start of render */
 Boolean IntermissionHack;		/* Hack for preventing double score drawing during intermission */
+Boolean SkipIntro = FALSE;		/* Used when loading a scenario from the command line */
 
 Word rw_maxtex;
 Word rw_mintex;

@@ -533,6 +533,7 @@ extern Byte textures[MAPSIZE*2+5][MAPSIZE]; /* 0-63 is horizontal, 64-127 is ver
 
 /* In SDLWolf.c (formerly Mac.c, 3DO.c, AppleIIgs.c) */
 
+extern void ProcessArgs(int argc, char *argv[]);
 extern void InitTools(void);
 extern void BlitScreen(void);
 extern void RenderScreen(void);
@@ -882,6 +883,7 @@ extern Word SlowDown;		/* If true, then limit game to 30hz */
 extern Word MouseEnabled;	/* Allow mouse control */
 extern Word GameViewSize;	/* Size of the game screen */
 extern Boolean IntermissionHack;	/* Hack for preventing double score drawing during intermission */
+extern Boolean SkipIntro;		/* Used when loading a scenario from the command line */
 extern Boolean PauseExited;	/* Flag for rerendering when exiting pause */
 extern Word NoWeaponDraw;		/* Flag to not draw the weapon on the screen */
 extern maplist_t *MapListPtr;		/* Pointer to map info record */

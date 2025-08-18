@@ -407,7 +407,7 @@ ResourceFile *TryResourcePath(const char *FileName, char **Found)
 	File = FOpenRead(FileName);
 	if (!File)
 		return NULL;
-	if (!*Found)
+	if (Found && !*Found)
 		*Found = SDL_strdup(FileName);
 	return LoadResourceStream(File);
 }

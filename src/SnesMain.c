@@ -232,15 +232,17 @@ extern Word NumberIndex;
 
 int main(int argc, char *argv[])
 {
+	playstate = EX_LIMBO;
+	ProcessArgs(argc, argv);
 	InitTools();		/* Init the system environment */
 	WaitTick();			/* Wait for a system tick to go by */
-	playstate = EX_LIMBO;
 	UngrabMouse();
 	NumberIndex = 36;	/* Force the score to redraw properly */
 	IntermissionHack = FALSE;
-	Intro();			/* Do the game intro */
+	if (!playstate && !SkipIntro)
+		Intro();			/* Do the game intro */
 	for (;;) {
-		if (!playstate) {
+		if (!playstate && !SkipIntro) {
 			do {
 				TitleScreen();		/* Show the game logo */
 			} while (!playstate);
@@ -249,6 +251,7 @@ int main(int argc, char *argv[])
 			BlastScreen();
 			SetAPalette(rBlackPal);
 		}
+		SkipIntro = FALSE;
 		if (playstate == EX_NEWGAME || playstate == EX_LOADGAME || ChooseGameDiff()) {	/* Choose your difficulty */
 			do {
 				//FadeToBlack();		/* Fade the screen */

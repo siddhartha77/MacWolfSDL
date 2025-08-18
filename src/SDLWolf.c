@@ -65,6 +65,7 @@ extern int SelectedMenu;
 extern const unsigned char MacFont[];
 extern const unsigned int MacFont_len;
 
+static Boolean DetectSaveGame(const char *FileName);
 static void CloseAudio(void);
 static Boolean ChangeAudioDevice(SDL_AudioDeviceID ID, const SDL_AudioSpec *Fmt);
 static void ProcessMusic(void *User, SDL_AudioStream *Stream, int Needed, int Total);
@@ -90,10 +91,152 @@ void InitTools(void)
 	MacLoadSoundFont();
 	ChangeAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
 	GetTableMemory();
+	if (NextScenarioPath) {
+		MountMapFile(NextScenarioPath);
+		if (playstate) {
+			SDL_free(NextScenarioPath);
+			NextScenarioPath = NULL;
+		}
+	}
 	LoadMapSetData();
 	NewGameWindow(2);				/* Create a game window at 512x384 */
 	ClearTheScreen(BLACK);			/* Force the offscreen memory blank */
 	BlastScreen();
+}
+
+/**********************************
+
+	Process command line arguments
+
+**********************************/
+
+static void Usage(FILE *Stream, const char *Program)
+{
+	fprintf(Stream,
+"Usage:"																"\n"
+"  %s [OPTIONS] [SCENARIO|SAVEGAME]"									"\n"
+""																		"\n"
+"Supported Options:"													"\n"
+"  -h, --help                    Show this help"						"\n"
+"  -r, --rsrc <FILE>             Use <FILE> as main resources"			"\n"
+"  -s, --scenario <FILE>         Load scenario from <FILE>"				"\n"
+"  -g, --loadgame <FILE>         Load saved game from <FILE>"			"\n"
+"  -d, --difficulty <NUM>        Start game with difficulty <NUM> [1-4]""\n"
+		 , Program);
+}
+
+typedef struct {
+	char shortarg;
+	const char *longarg;
+	char **storage;
+	int hasparam;
+} cmdopt_t;
+
+void ProcessArgs(int argc, char *argv[])
+{
+	int i,j;
+	Boolean Fail = FALSE;
+	char *LoadMain = NULL;
+	char *LoadLevel = NULL;
+	char *LoadSave = NULL;
+	char *LoadAny = NULL;
+	char *DifficultyStr = NULL;
+	int gotopt;
+
+	cmdopt_t OptDefs[] = {
+		{ 'r', "rsrc", &LoadMain, 1 },
+		{ 's', "scenario", &LoadLevel, 1 },
+		{ 'g', "loadgame", &LoadSave, 1 },
+		{ 'd', "difficulty", &DifficultyStr, 1 },
+	};
+
+	for (i = 1; i < argc; i++) {
+		if (argv[i][0] == '-') {
+			gotopt = -1;
+			if (argv[i][1] == '-') {
+				if (argv[i][2] == '\0') {
+					break;
+				} else if (!strcmp(&argv[i][2], "help")) {
+					Usage(stdout, argv[0]);
+					exit(0);
+				} else {
+					for (j = 0; j < ARRAYLEN(OptDefs); j++) {
+						if (OptDefs[j].longarg && !strcmp(&argv[i][2], OptDefs[j].longarg)) {
+							gotopt = j;
+							break;
+						}
+					}
+				}
+			} else if (argv[i][1] != '\0' && argv[i][2] == '\0') {
+				if (argv[i][1] == 'h') {
+					Usage(stdout, argv[0]);
+					exit(0);
+				} else {
+					for (j = 0; j < ARRAYLEN(OptDefs); j++) {
+						if (OptDefs[j].shortarg && argv[i][1] == OptDefs[j].shortarg) {
+							gotopt = j;
+							break;
+						}
+					}
+				}
+			}
+			if (gotopt < 0) {
+				fprintf(stderr, "Error: unknown switch '%s'", argv[i]);
+				Fail = TRUE;
+			} else if (OptDefs[gotopt].hasparam > 0) {
+				if (i + 1 < argc) {
+					if (OptDefs[gotopt].storage == &LoadLevel)
+						LoadSave = NULL;
+					else if (OptDefs[gotopt].storage == &LoadSave)
+						LoadLevel = NULL;
+					*OptDefs[gotopt].storage = argv[++i];
+				} else {
+					fprintf(stderr, "Error: switch '%s' requires an argument", argv[i]);
+					Fail = TRUE;
+				}
+			} else {
+				*OptDefs[gotopt].storage = argv[i];
+			}
+		} else {
+			LoadLevel = NULL;
+			LoadSave = NULL;
+			LoadAny = argv[i];
+		}
+	}
+	for (; i < argc; i++) {
+		LoadLevel = NULL;
+		LoadSave = NULL;
+		LoadAny = argv[i];
+	}
+
+	if (Fail) {
+		Usage(stderr, argv[0]);
+		exit(1);
+	}
+
+	if (DifficultyStr) {
+		difficulty = SDL_atoi(DifficultyStr);
+		if (difficulty > 0)
+			difficulty = SDL_min(3, difficulty - 1);
+	}
+	if (LoadMain)
+		MainResources = LoadResources(LoadMain);
+	if (LoadAny) {
+		if (DetectSaveGame(LoadAny))
+			LoadSave = LoadAny;
+		else
+			LoadLevel = LoadAny;
+	}
+	if (LoadLevel) {
+		NextScenarioPath = SDL_strdup(LoadLevel);
+		if (DifficultyStr)
+			playstate = EX_NEWGAME;
+		else
+			SkipIntro = TRUE;
+	} else if (LoadSave) {
+		SaveFileName = SDL_strdup(LoadSave);
+		playstate = EX_LOADGAME;
+	}
 }
 
 const char *PrefPath(void)
@@ -958,7 +1101,22 @@ void ShareWareEnd(void)
 
 **********************************/
 
-Byte MachType[4] = "SDL3";
+static const Byte MachType[4] = "SDL3";
+
+static Boolean DetectSaveGame(const char *FileName)
+{
+	FILE *Check;
+	Boolean RetVal = FALSE;
+	Byte Header[4];
+
+	Check = fopen(FileName, "rb");
+	if (!Check)
+		return RetVal;
+	if (fread(Header, 1, sizeof Header, Check) == sizeof Header)
+		RetVal = memcmp(Header, MachType, sizeof MachType) == 0;
+	fclose(Check);
+	return RetVal;
+}
 
 #define WRITECHECKED(src, size) do { \
 		if (fwrite((src), 1, (size), FileRef) != (size)) \
