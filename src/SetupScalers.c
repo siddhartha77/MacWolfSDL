@@ -205,7 +205,7 @@ void MakeSmallFont(void)
 	i = 0;
 	DestPtr = SmallFontPtr;
 	do {
-		ArtStart = &ArtData[i][0];
+		ArtStart = ArtData[i];
 		if (!ArtStart) {
 			DestPtr+=(16*16);
 		} else {

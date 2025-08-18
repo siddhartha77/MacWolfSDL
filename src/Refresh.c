@@ -36,7 +36,7 @@ fixed_t	SUFixedMul (fixed_t a, ufixed_t b)
 /* -8.8 / -8.8 = -8.8*/
 fixed_t	FixedDiv (fixed_t a, fixed_t b)
 {
-	a = (int32_t)(((int32_t)a<<FRACBITS) / (int32_t)b);
+	a = (int32_t)((uint32_t)a<<FRACBITS) / (int32_t)b;
 	return a;
 }
 

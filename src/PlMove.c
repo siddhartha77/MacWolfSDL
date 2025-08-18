@@ -181,7 +181,7 @@ void ControlMovement(void)
 /* Handle all strafe motion */
 
 	if (mousex) {			/* Side to side motion (Strafe mode) */
-		mousex<<=3;
+		mousex=(unsigned)mousex<<3;
 		if (mousex>0) {
 			Thrust(gamestate.viewangle - ANGLES/4,mousex,&xmove,&ymove);
 		} else {
@@ -199,7 +199,7 @@ void ControlMovement(void)
 
 	total = buttonstate[bt_north] ? move : 0;	/* Move ahead? */
 	if (mousey < 0) {			/* Moved the mouse ahead? */
-		total -= mousey<<3;		/* Add it in */
+		total -= (int)((unsigned)mousey<<3);		/* Add it in */
 	}
 	if (total) {
 		Thrust(gamestate.viewangle, total,&xmove,&ymove);	/* Move ahead */
