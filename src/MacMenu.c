@@ -676,8 +676,11 @@ Choose:
 	ClearTheScreen(WHITE);
 	ClearFrameBuffer();
 	MenuBG = LoadPict(MainResources, 128);
-	DrawGameDiff();
-	ReadMenuJoystick();
+	for (i = 0; i < 2; i++) {	/* Workaround odd SDL behaviour on Windows */
+		WaitTick();
+		ReadMenuJoystick();
+		DrawGameDiff();
+	}
 	for (;;) {
 		if (!Click)
 			WaitTick();
@@ -745,29 +748,36 @@ static Boolean GetFullScreen(widget_t*_W,void*_D) { return FullScreen; }
 static Boolean GetSoundEnabled(widget_t*_W,void*_D) { return (SystemState & SfxActive) != 0; }
 static Boolean GetMusicEnabled(widget_t*_W,void*_D) { return (SystemState & MusicActive) != 0; }
 static Boolean GetMouseEnabled(widget_t*_W,void*_D) { return MouseEnabled; }
+static Boolean GetAlwaysRun(widget_t*_W,void*_D) { return (MoveFlags & 1) != 0; }
+static Boolean GetAlwaysStrafe(widget_t*_W,void*_D) { return (MoveFlags & 2) != 0; }
 static Boolean GetSlowDown(widget_t*_W,void*_D) { return SlowDown; }
 static Boolean GetPaused(widget_t*_W,void*_D) { return TRUE; }
 
-static menu_t FileMenu = {"File", (widget_t[8]){
+static menu_t FileMenu = {"File", (widget_t[10]){
 	{&MenuItemClass, {20, 13, 36, 144}, &(menuitem_t){"New Game..."}},
 	{&MenuItemClass, {36, 13, 52, 144}, &(menuitem_t){"Load Scenario..."}},
-	{&MenuItemClass, {52, 13, 68, 144}, &(menuitem_t){"Open"}},
-	{&MenuSeparatorClass, {68, 13, 84, 144}},
-	{&MenuItemClass, {84, 13, 100, 144}, &(menuitem_t){"Save"}},
-	{&MenuItemClass, {100, 13, 116, 144}, &(menuitem_t){"Save As..."}},
-	{&MenuSeparatorClass, {116, 13, 132, 144}},
-	{&MenuItemClass, {132, 13, 148, 144}, &(menuitem_t){"Quit"}},
-}, 8, {19, 12, 149, 145}, -1};
-static menu_t OptionsMenu = {"Options", (widget_t[8]){
-	{&MenuItemClass, {20, 54, 36, 233}, &(menuitem_t){"Full Screen", GetFullScreen}},
-	{&MenuItemClass, {36, 54, 52, 233}, &(menuitem_t){"Sound", GetSoundEnabled}},
-	{&MenuItemClass, {52, 54, 68, 233}, &(menuitem_t){"Music", GetMusicEnabled}},
-	{&MenuItemClass, {68, 54, 84, 233}, &(menuitem_t){"Set Screen size..."}},
-	{&MenuItemClass, {84, 54, 100, 233}, &(menuitem_t){"Speed Governor", GetSlowDown}},
-	{&MenuItemClass, {100, 54, 116, 233}, &(menuitem_t){"Mouse Control", GetMouseEnabled}},
-	{&MenuItemClass, {116, 54, 132, 233}, &(menuitem_t){"Pause", GetPaused}},
-	{&MenuItemClass, {132, 54, 148, 233}, &(menuitem_t){"Configure Keyboard"}},
-}, 8, {19, 53, 149, 234}, -1};
+	{&MenuSeparatorClass, {52, 13, 68, 144}},
+	{&MenuItemClass, {68, 13, 84, 144}, &(menuitem_t){"Open"}},
+	{&MenuItemClass, {84, 13, 100, 144}, &(menuitem_t){"Quick Load"}},
+	{&MenuSeparatorClass, {100, 13, 116, 144}},
+	{&MenuItemClass, {116, 13, 132, 144}, &(menuitem_t){"Save"}},
+	{&MenuItemClass, {132, 13, 148, 144}, &(menuitem_t){"Save As..."}},
+	{&MenuSeparatorClass, {148, 13, 164, 144}},
+	{&MenuItemClass, {164, 13, 180, 144}, &(menuitem_t){"Quit"}},
+}, 10, {19, 12, 181, 145}, -1};
+static menu_t OptionsMenu = {"Options", (widget_t[11]){
+	{&MenuItemClass, {20, 54, 36, 233}, &(menuitem_t){"Pause", GetPaused}},
+	{&MenuItemClass, {36, 54, 52, 233}, &(menuitem_t){"Full Screen", GetFullScreen}},
+	{&MenuItemClass, {52, 54, 68, 233}, &(menuitem_t){"Sound", GetSoundEnabled}},
+	{&MenuItemClass, {68, 54, 84, 233}, &(menuitem_t){"Music", GetMusicEnabled}},
+	{&MenuItemClass, {84, 54, 100, 233}, &(menuitem_t){"Set Screen size..."}},
+	{&MenuItemClass, {100, 54, 116, 233}, &(menuitem_t){"Speed Governor", GetSlowDown}},
+	{&MenuItemClass, {116, 54, 132, 233}, &(menuitem_t){"Mouse Control", GetMouseEnabled}},
+	{&MenuItemClass, {132, 54, 148, 233}, &(menuitem_t){"Always Run", GetAlwaysRun}},
+	{&MenuItemClass, {148, 54, 164, 233}, &(menuitem_t){"Always Strafe", GetAlwaysStrafe}},
+	{&MenuItemClass, {164, 54, 180, 233}, &(menuitem_t){"Configure Keyboard"}},
+	{&MenuItemClass, {180, 54, 196, 233}, &(menuitem_t){"Configure Gamepad"}},
+}, 11, {19, 53, 197, 234}, -1};
 static widget_t MenuBar[2] = {
 	{&MenuBarItemClass, {1, 12, 19, 53},&FileMenu},
 	{&MenuBarItemClass, {1, 53, 19, 120},&OptionsMenu},
@@ -800,7 +810,7 @@ int DoMenuCommand(int Menu, int Item)
 				return -2;
 			}
 			break;
-		case 2:
+		case 3:
 			if (ChooseLoadGame()) {		/* Choose a game to load */
 				if (LoadGame()) {				/* Load the game into memory */
 					return EX_LOADGAME;	/* Restart a loaded game */
@@ -808,36 +818,43 @@ int DoMenuCommand(int Menu, int Item)
 			}
 			break;
 		case 4:
+			if (LoadGame()) {				/* Load the game into memory */
+				return EX_LOADGAME;	/* Restart a loaded game */
+			}
+			break;
+		case 6:
 			if (!SaveFileName)			/* Save the file automatically? */
 				ChooseSaveGame();		/* Select a save game name */
 			if (SaveFileName)
 				SaveGame();				/* Save it */
 			break;
-		case 5:
+		case 7:
 			if (ChooseSaveGame()) {		/* Select a save game name */
 				SaveGame();				/* Save it */
 			}
 			break;
-		case 7:
+		case 9:
 			GoodBye();	/* Try to quit */
 			break;
 		}
 		break;
 	case 1:
 		switch (Item) {
-		case 0:
+		case 0:			/* Unpause */
+			return -1;
+		case 1:
 			FullScreen^=1;
 			SDL_SetWindowFullscreen(SdlWindow, FullScreen);
 			UpdateVideoSettings();
 			PresentScreen();
 			break;
-		case 1:
+		case 2:
 			SystemState^=SfxActive;				/* Sound on/off flags */
 			if (!(SystemState&SfxActive)) {
 				PlaySound(0);			/* Turn off all existing sounds */
 			}
 			break;
-		case 2:
+		case 3:
 			SystemState^=MusicActive;			/* Music on/off flags */
 			if (SystemState&MusicActive) {
 				PlaySong(KilledSong);		/* Restart the music */
@@ -845,18 +862,24 @@ int DoMenuCommand(int Menu, int Item)
 				PlaySong(0);	/* Shut down the music */
 			}
 			break;
-		case 3:
-			return -3;
 		case 4:
+			return -3;
+		case 5:
 			SlowDown^=1;		/* Toggle the slow down flag */
 			break;
-		case 5:
+		case 6:
 			MouseEnabled = (!MouseEnabled);	/* Toggle the cursor */
 			break;
-		case 6:			/* Unpause */
-			return -1;
-		case 7:			/* Keyboard control window */
+		case 7:
+			MoveFlags^=1;				/* Always run */
+			break;
+		case 8:
+			MoveFlags^=2;				/* Always strafe */
+			break;
+		case 9:			/* Keyboard control window */
 			return -4;
+		case 10:			/* Gamepad control window */
+			return -5;
 		}
 		SavePrefs();
 		break;
@@ -1034,7 +1057,7 @@ static const char *const KeyNames[12] = {
 	"Next Weapon", "Shoot", "Sidestep", "Run", "Action", "Auto Map"};
 static widget_t KeyButtons[12];
 static widget_t KeyOkCancelButtons[2];
-static SDL_Keycode TmpKeyBinds[12];
+static int TmpKeyBinds[12];
 static const Rect KeyResponseButtonRect = {0, 0, 20, 58};
 
 static void InitKeyboardDialog(void)
@@ -1130,6 +1153,7 @@ static int GetAKey(void)
 	SDL_Event event;
 
 	joystick1 = 0;
+	gamepad1 = 0;
 	mousewheel = 0;
 
 	SDL_PumpEvents();
@@ -1145,6 +1169,23 @@ static int GetAKey(void)
 		} else if (event.type == SDL_EVENT_MOUSE_MOTION) {
 			mousex = event.motion.x;
 			mousey = event.motion.y;
+		} else if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
+			if (event.gbutton.button == SDL_GAMEPAD_BUTTON_EAST
+				|| event.gbutton.button == SDL_GAMEPAD_BUTTON_BACK
+				|| event.gbutton.button == SDL_GAMEPAD_BUTTON_GUIDE
+				|| event.gbutton.button == SDL_GAMEPAD_BUTTON_MISC1)
+			return -SDL_SCANCODE_ESCAPE;
+		} else if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {
+			if (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTX)
+				joystickx = event.gaxis.value;
+			else if (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTY)
+				joysticky = event.gaxis.value;
+			else if (event.gaxis.axis == SDL_GAMEPAD_AXIS_RIGHTX)
+				joystickx2 = event.gaxis.value;
+			else if (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER)
+				joystickL2 = event.gaxis.value;
+			else if (event.gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
+				joystickR2 = event.gaxis.value;
 		} else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
 			mousex = event.motion.x;
 			mousey = event.motion.y;
@@ -1153,6 +1194,141 @@ static int GetAKey(void)
 			return -event.key.scancode;
 		}
 	}
+	return 0;
+}
+
+static char *JoyButtonName(int Button)
+{
+	SDL_Gamepad *Gamepad;
+	SDL_GamepadButtonLabel Label;
+	const char *Name = NULL;
+
+	if (Button >= 0) {
+		Gamepad = SDL_GetGamepadFromPlayerIndex(0);
+		if (Gamepad) {
+			Label = SDL_GetGamepadButtonLabel(Gamepad, Button);
+			switch (Label) {
+				case SDL_GAMEPAD_BUTTON_LABEL_A: Name = "A"; break;
+				case SDL_GAMEPAD_BUTTON_LABEL_B: Name = "B"; break;
+				case SDL_GAMEPAD_BUTTON_LABEL_X: Name = "X"; break;
+				case SDL_GAMEPAD_BUTTON_LABEL_Y: Name = "Y"; break;
+				case SDL_GAMEPAD_BUTTON_LABEL_CROSS: Name = "Cross"; break;
+				case SDL_GAMEPAD_BUTTON_LABEL_CIRCLE: Name = "Circle"; break;
+				case SDL_GAMEPAD_BUTTON_LABEL_SQUARE: Name = "Square"; break;
+				case SDL_GAMEPAD_BUTTON_LABEL_TRIANGLE: Name = "Triangle"; break;
+				default: break;
+			}
+			if (Name)
+				return SDL_strdup(Name);
+		}
+		switch (Button) {
+			case SDL_GAMEPAD_BUTTON_SOUTH: Name = "A"; break;
+			case SDL_GAMEPAD_BUTTON_EAST: Name = "B"; break;
+			case SDL_GAMEPAD_BUTTON_WEST: Name = "X"; break;
+			case SDL_GAMEPAD_BUTTON_NORTH: Name = "Y"; break;
+			case SDL_GAMEPAD_BUTTON_BACK: Name = "Back"; break;
+			case SDL_GAMEPAD_BUTTON_GUIDE: Name = "Guide"; break;
+			case SDL_GAMEPAD_BUTTON_START: Name = "Start"; break;
+			case SDL_GAMEPAD_BUTTON_LEFT_STICK: Name = "Left Stick"; break;
+			case SDL_GAMEPAD_BUTTON_RIGHT_STICK: Name = "Right Stick"; break;
+			case SDL_GAMEPAD_BUTTON_LEFT_SHOULDER: Name = "Left Shoulder"; break;
+			case SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER: Name = "Right Shoulder"; break;
+			case SDL_GAMEPAD_BUTTON_DPAD_UP: Name = "Up"; break;
+			case SDL_GAMEPAD_BUTTON_DPAD_DOWN: Name = "Down"; break;
+			case SDL_GAMEPAD_BUTTON_DPAD_LEFT: Name = "Left"; break;
+			case SDL_GAMEPAD_BUTTON_DPAD_RIGHT: Name = "Right"; break;
+			case SDL_GAMEPAD_BUTTON_RIGHT_PADDLE1: Name = "Paddle 1"; break;
+			case SDL_GAMEPAD_BUTTON_LEFT_PADDLE1: Name = "Paddle 2"; break;
+			case SDL_GAMEPAD_BUTTON_RIGHT_PADDLE2: Name = "Paddle 3"; break;
+			case SDL_GAMEPAD_BUTTON_LEFT_PADDLE2: Name = "Paddle 4"; break;
+			case SDL_GAMEPAD_BUTTON_TOUCHPAD: Name = "Touchpad"; break;
+			case SDL_GAMEPAD_BUTTON_MISC1: Name = "Misc 1"; break;
+			case SDL_GAMEPAD_BUTTON_MISC2: Name = "Misc 2"; break;
+			case SDL_GAMEPAD_BUTTON_MISC3: Name = "Misc 3"; break;
+			case SDL_GAMEPAD_BUTTON_MISC4: Name = "Misc 4"; break;
+			case SDL_GAMEPAD_BUTTON_MISC5: Name = "Misc 5"; break;
+			case SDL_GAMEPAD_BUTTON_MISC6: Name = "Misc 6"; break;
+			default: return AllocFormatStr("Pad %d", Button);
+		}
+		return SDL_strdup(Name);
+	} else {
+		return AllocFormatStr("Joy %d", -Button);
+	}
+}
+
+static void InitGamepadDialog(void)
+{
+	int X, Y;
+	int i;
+
+	X = (SCREENWIDTH-KeyboardDialogRect.right)/2;
+	Y = (SCREENHEIGHT-KeyboardDialogRect.bottom)/2;
+
+	MenuScrollY = MenuPosY = 0;
+	for (i = 0; i < ARRAYLEN(GamepadBinds); i++) {
+		KeyButtons[i] = (widget_t) {&TextEntryClass, RectOff(&KeyButtonRect, X, Y+i*16),
+			JoyButtonName(GamepadBinds[KeyIndexes[i]])};
+		TmpKeyBinds[i] = GamepadBinds[KeyIndexes[i]];
+	}
+	KeyOkCancelButtons[0] = (widget_t) {&ButtonClass, RectOff(&KeyResponseButtonRect, X+240, Y+84), "Cancel"};
+	KeyOkCancelButtons[1] = (widget_t) {&ButtonClass, RectOff(&KeyResponseButtonRect, X+240, Y+116), "Ok"};
+}
+
+static int GetGamepadButton(void)
+{
+	SDL_Event event;
+	int padbutton = -1;
+	int joybutton = -1;
+
+	joystick1 = 0;
+	gamepad1 = 0;
+	mousewheel = 0;
+
+	SDL_PumpEvents();
+	while (SDL_PollEvent(&event)) {
+		if (ProcessGlobalEvent(&event)) {
+			if (event.type == SDL_EVENT_WINDOW_RESIZED)
+				return SDL_MAX_SINT32;
+			continue;
+		}
+		SDL_ConvertEventToRenderCoordinates(SdlRenderer, &event);
+		if (event.type == SDL_EVENT_MOUSE_WHEEL) {
+			mousewheel += event.wheel.y;
+		} else if (event.type == SDL_EVENT_MOUSE_MOTION) {
+			mousex = event.motion.x;
+			mousey = event.motion.y;
+		} else if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
+			if (event.gbutton.button == SDL_GAMEPAD_BUTTON_GUIDE
+				|| event.gbutton.button == SDL_GAMEPAD_BUTTON_MISC1)
+				return -SDL_SCANCODE_ESCAPE;
+			else if (padbutton < 0)
+				padbutton = event.gbutton.button;
+		} else if (event.type == SDL_EVENT_JOYSTICK_BUTTON_DOWN) {
+			if (joybutton < 0)
+				joybutton = event.jbutton.button;
+		} else if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {
+			if (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTX)
+				joystickx = event.gaxis.value;
+			else if (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTY)
+				joysticky = event.gaxis.value;
+			else if (event.gaxis.axis == SDL_GAMEPAD_AXIS_RIGHTX)
+				joystickx2 = event.gaxis.value;
+			else if (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER)
+				joystickL2 = event.gaxis.value;
+			else if (event.gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
+				joystickR2 = event.gaxis.value;
+		} else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+			mousex = event.motion.x;
+			mousey = event.motion.y;
+			return event.button.button;
+		} else if (event.type == SDL_EVENT_KEY_DOWN) {
+			return -event.key.scancode;
+		}
+	}
+	if (padbutton >= 0)
+		return 0x100+padbutton;
+	if (joybutton >= 0)
+		return 0x200+joybutton;
 	return 0;
 }
 
@@ -1174,14 +1350,15 @@ exit_t PauseMenu(Boolean Shape)
 	Playing = playstate == EX_STILLPLAYING || playstate == EX_AUTOMAP;
 	if (Playing)
 		PauseSoundMusicSystem();
-	MENUITEM(&FileMenu.entries[4])->disabled = !Playing;
-	MENUITEM(&FileMenu.entries[5])->disabled = !Playing;
+	MENUITEM(&FileMenu.entries[4])->disabled = !SaveFileName;
+	MENUITEM(&FileMenu.entries[6])->disabled = !Playing;
+	MENUITEM(&FileMenu.entries[7])->disabled = !Playing;
 	UngrabMouse();
 	ClearFrameBuffer();
 	if (Shape) {
 		ShapePtr = LoadCompressedShape(rPauseShape);
 		if (ShapePtr) {
-			DrawShape((SCREENWIDTH-224)/2, (MacViewHeight-56)/2, ShapePtr);
+			DrawShape((SCREENWIDTH-224)/2, (VIEWHEIGHT-56)/2, ShapePtr);
 			BlitScreen();
 		}
 	}
@@ -1209,6 +1386,26 @@ exit_t PauseMenu(Boolean Shape)
 					Redraw = TRUE;
 				}
 			}
+		} else if (OpenDialog == 3 && MenuPosY < 12) {
+			Click = GetGamepadButton();
+			if (Click == -SDL_SCANCODE_ESCAPE) {
+				joystick1 = JOYPAD_B;
+			} else if (Click == -SDL_SCANCODE_UP && MenuPosY > 0) {
+				MenuScrollY--;
+			} else if (Click == -SDL_SCANCODE_DOWN && MenuPosY < 11) {
+				MenuScrollY++;
+			} else if (Click == -SDL_SCANCODE_RIGHT) {
+				MenuScrollY = 12;
+			} else if (Click >= 0x100 && Click < 0x300) {
+				i = Click >= 0x200 ? 0x200 - Click : Click - 0x100;
+				TmpKeyBinds[MenuPosY] = i;
+				FreeSomeMem(KeyButtons[MenuPosY].ptr);
+				KeyButtons[MenuPosY].ptr = JoyButtonName(i);
+				MenuScrollY++;
+				if (MenuScrollY == 12)
+					MenuScrollY++;
+				Redraw = TRUE;
+			}
 		} else {
 			Click = ReadMenuJoystick();
 		}
@@ -1216,6 +1413,7 @@ exit_t PauseMenu(Boolean Shape)
 			switch (OpenDialog) {
 				case 1: InitVideoDialog(); break;
 				case 2: InitKeyboardDialog(); break;
+				case 3: InitGamepadDialog(); break;
 				default: break;
 			}
 			Redraw = TRUE;
@@ -1224,16 +1422,23 @@ exit_t PauseMenu(Boolean Shape)
 			switch (OpenDialog) {
 				case 1: i = RunVideoDialog(Click, oldmousex != mousex || oldmousey != mousey); break;
 				case 2: i = RunKeyboardDialog(Click); break;
+				case 3: i = RunKeyboardDialog(Click); break;
 				default: i = -1; break;
 			}
 			if (i < 0) {
 				if (OpenDialog && ShapePtr) {
-					DrawShape((SCREENWIDTH-224)/2, (MacViewHeight-56)/2, ShapePtr);
+					DrawShape((SCREENWIDTH-224)/2, (VIEWHEIGHT-56)/2, ShapePtr);
 					BlitScreen();
 				}
 				if (OpenDialog == 2 && MenuPosY == 13) {
 					for (i = 0; i < ARRAYLEN(KeyBinds); i++)
 						KeyBinds[KeyIndexes[i]] = TmpKeyBinds[i];
+					SavePrefs();
+				} else if (OpenDialog == 3 && MenuPosY == 13) {
+					for (i = 0; i < ARRAYLEN(GamepadBinds); i++) {
+						FreeSomeMem(KeyButtons[i].ptr);
+						GamepadBinds[KeyIndexes[i]] = TmpKeyBinds[i];
+					}
 					SavePrefs();
 				}
 				OpenDialog = 0;
@@ -1304,7 +1509,7 @@ exit_t PauseMenu(Boolean Shape)
 							RedrawStatusBar();		/* Redraw the lower area */
 							RenderView();
 							if (ShapePtr) {
-								DrawShape((SCREENWIDTH-224)/2, (MacViewHeight-56)/2, ShapePtr);
+								DrawShape((SCREENWIDTH-224)/2, (VIEWHEIGHT-56)/2, ShapePtr);
 								BlitScreen();
 							}
 							goto Draw;
@@ -1315,6 +1520,7 @@ exit_t PauseMenu(Boolean Shape)
 						switch (OpenDialog) {
 							case 1: InitVideoDialog(); break;
 							case 2: InitKeyboardDialog(); break;
+							case 3: InitGamepadDialog(); break;
 							default: break;
 						}
 						SelectedMenu = -1;
@@ -1351,7 +1557,8 @@ exit_t PauseMenu(Boolean Shape)
 				case 0: DrawMainMenu(SelectedMenu); break;
 				case 1: DrawVideoDialog(); break;
 				case 2: DrawKeyboardDialog(); break;
-					default: break;
+				case 3: DrawKeyboardDialog(); break;
+				default: break;
 			}
 			PresentScreen();
 		}
@@ -1363,7 +1570,8 @@ exit_t PauseMenu(Boolean Shape)
 	mouseturn=0;
 	mousebuttons=0;
 	joystick1=0;
-	if (playstate == EX_STILLPLAYING)
+	gamepad1=0;
+	if (playstate == EX_STILLPLAYING || playstate == EX_AUTOMAP)
 		GrabMouse();
 	ResumeSoundMusicSystem();
 	return RetVal;

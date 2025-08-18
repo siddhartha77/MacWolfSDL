@@ -31,8 +31,12 @@ Boolean selectheld;					/* Weapon select held down? */
 Boolean attackheld;					/* Attack button held down? */
 Boolean	buttonstate[NUMBUTTONS];	/* Current input */
 Word joystick1;						/* Joystick value */
+Word gamepad1;						/* Gamepad value */
 short joystickx=0;					/* Joystick X axis */
 short joysticky=0;					/* Joystick Y axis */
+short joystickx2=0;					/* Joystick X axis right stick */
+short joystickL2=0;					/* Joystick left trigger */
+short joystickR2=0;					/* Joystick right trigger */
 int mousex;							/* Mouse x movement */
 int mousey;							/* Mouse y movement */
 int	mouseturn;						/* Mouse turn movement */
@@ -79,6 +83,7 @@ Byte *ArtData[64];
 void *SpriteArray[S_LASTONE];
 Word MacVidSize = -1;
 Boolean PauseExited=FALSE;
+Word MoveFlags = 0;
 Word SlowDown = 1;			/* Force the game to 15 hz */
 Word MouseEnabled = 0;		/* Allow mouse control */
 Word GameViewSize = 3;		/* Size of the game screen */

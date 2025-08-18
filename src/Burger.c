@@ -32,7 +32,7 @@ Word KilledSong;				/* Song that's currently playing */
 LongWord LastTick;				/* Last system tick (60hz) */
 Word FontX;						/* X Coord of font */
 Word FontY;						/* Y Coord of font */
-SDL_FRect FontClip = { 0, 0, SDL_MAX_UINT32, SDL_MAX_UINT32 };
+SDL_FRect FontClip = { 0, 0, 4294967296, 4294967296 };
 LongWord YTable[480];			/* Offsets to the screen */
 //SndChannelPtr myPaddleSndChan;	/* Sound channel */
 //Word ScanCode;
@@ -136,7 +136,7 @@ int WaitTicksEvent(Word Time)
 			else if (event.type == SDL_EVENT_KEY_DOWN)
 				return event.key.key;
 			else if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN)
-				return 256-event.gbutton.button;
+				return -256-event.gbutton.button;
 		}
 		if (Time && !i)
 			break;
@@ -514,7 +514,7 @@ void FontSetClip(const Rect *R)
 	if (R)
 		FontClip = (SDL_FRect) {R->left, R->top, R->right - R->left, R->bottom - R->top};
 	else
-		FontClip = (SDL_FRect) { 0, 0, SDL_MAX_UINT32, SDL_MAX_UINT32 };
+		FontClip = (SDL_FRect) { 0, 0, 4294967296, 4294967296 };
 }
 
 /**********************************

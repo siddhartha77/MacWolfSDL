@@ -2,6 +2,7 @@
 #include "Burger.h"
 #include "WolfDef.h"
 #include <stdlib.h>
+#include <limits.h>
 
 #define TML_IMPLEMENTATION
 #define TML_NO_STDIO
@@ -25,7 +26,7 @@ static const char *PrefApp = "macwolfsdl";
 static const char *PrefsFile = "macwolfsdl.ini";
 
 #define NAUDIOCHANS 5
-#define JOYDEADZONE 5000
+#define JOYDEADZONE 8000
 
 Word MacWidth = 0;				/* Width of play screen (Same as GameRect.right) */
 Word MacHeight = 0;				/* Height of play screen (Same as GameRect.bottom) */
@@ -53,6 +54,7 @@ static tml_message *SongCurrent;
 static float *MusicBuffer = NULL;
 static LongWord MusicBufferFrames = 0;
 static Word SdlSfxNums[NAUDIOCHANS];
+static int NumGamepads;
 static Byte *GameShapeBuffer = NULL;
 static char *MyPrefPath = NULL;
 static SDL_Storage *MyPrefStorage = NULL;
@@ -74,7 +76,7 @@ void MacLoadSoundFont(void);
 void InitTools(void)
 {
 	SDL_JoystickID *Gamepads;
-	int NumGamepads;
+	SDL_Gamepad *Gamepad;
 	int i;
 
 	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD))
@@ -82,8 +84,11 @@ void InitTools(void)
 	SDL_SetAppMetadata("Wolfenstein 3D", "1.0", "MacWolfSDL");
 	Gamepads = SDL_GetGamepads(&NumGamepads);
 	if (Gamepads) {
-		for (i = 0; i < NumGamepads; i++)
-			SDL_OpenJoystick(Gamepads[i]);
+		for (i = 0; i < NumGamepads; i++) {
+			Gamepad = SDL_OpenGamepad(Gamepads[i]);
+			if (Gamepad != NULL)
+				SDL_SetGamepadPlayerIndex(Gamepad, i);
+		}
 		SDL_free(Gamepads);
 	}
 	LoadPrefs();
@@ -450,6 +455,9 @@ void BlastScreen2(Rect *BlastRect)
 Boolean ProcessGlobalEvent(SDL_Event *Event)
 {
 	SDL_Gamepad *Gamepad;
+	SDL_JoystickID *Gamepads;
+	int i;
+
 	switch (Event->type) {
 		case SDL_EVENT_QUIT:
 			GoodBye();
@@ -458,18 +466,42 @@ Boolean ProcessGlobalEvent(SDL_Event *Event)
 			PresentScreen();
 			return TRUE;
 		case SDL_EVENT_GAMEPAD_ADDED:
-			SDL_OpenGamepad(Event->gdevice.which);
+			Gamepad = SDL_OpenGamepad(Event->gdevice.which);
+			if (!Gamepad)
+				SDL_SetGamepadPlayerIndex(Gamepad, NumGamepads++);
 			return TRUE;
 		case SDL_EVENT_GAMEPAD_REMOVED:
 			Gamepad = SDL_GetGamepadFromID(Event->gdevice.which);
-			if (Gamepad)
+			if (Gamepad) {
+				joystickx = 0;
+				joysticky = 0;
+				joystickx2 = 0;
+				joystickL2 = 0;
+				joystickR2 = 0;
+				gamepad1 = 0;
 				SDL_CloseGamepad(Gamepad);
+			}
+			Gamepads = SDL_GetGamepads(&NumGamepads);
+			if (Gamepads) {
+				for (i = 0; i < NumGamepads; i++) {
+					Gamepad = SDL_GetGamepadFromID(Gamepads[i]);
+					if (Gamepad != NULL)
+						SDL_SetGamepadPlayerIndex(Gamepad, i);
+				}
+				SDL_free(Gamepads);
+			}
 			return TRUE;
 		case SDL_EVENT_GAMEPAD_AXIS_MOTION:
 			if (Event->gaxis.axis == SDL_GAMEPAD_AXIS_LEFTX)
 				joystickx = Event->gaxis.value;
 			else if (Event->gaxis.axis == SDL_GAMEPAD_AXIS_LEFTY)
 				joysticky = Event->gaxis.value;
+			else if (Event->gaxis.axis == SDL_GAMEPAD_AXIS_RIGHTX)
+				joystickx2 = Event->gaxis.value;
+			else if (Event->gaxis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER)
+				joystickL2 = Event->gaxis.value;
+			else if (Event->gaxis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER)
+				joystickR2 = Event->gaxis.value;
 			return TRUE;
 			break;
 	}
@@ -497,6 +529,21 @@ SDL_Keycode KeyBinds[12] = {
 	SDL_SCANCODE_LCTRL,
 };
 
+int GamepadBinds[12] = {
+	SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER,
+	SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,
+	SDL_GAMEPAD_BUTTON_NORTH,
+	SDL_GAMEPAD_BUTTON_EAST,
+	SDL_GAMEPAD_BUTTON_DPAD_RIGHT,
+	SDL_GAMEPAD_BUTTON_DPAD_LEFT,
+	SDL_GAMEPAD_BUTTON_DPAD_DOWN,
+	SDL_GAMEPAD_BUTTON_DPAD_UP,
+	SDL_GAMEPAD_BUTTON_START,
+	SDL_GAMEPAD_BUTTON_BACK,
+	SDL_GAMEPAD_BUTTON_WEST,
+	SDL_GAMEPAD_BUTTON_SOUTH
+};
+
 typedef struct {
 	SDL_Scancode Code;
 	Word JoyValue;
@@ -506,21 +553,6 @@ typedef struct {
 	SDL_GamepadButton Code;
 	Word JoyValue;
 } Pad2Joy;
-
-static const Pad2Joy GamepadMatrix[] = {
-	{SDL_GAMEPAD_BUTTON_DPAD_UP,JOYPAD_UP},
-	{SDL_GAMEPAD_BUTTON_DPAD_DOWN,JOYPAD_DN},
-	{SDL_GAMEPAD_BUTTON_DPAD_LEFT,JOYPAD_LFT},
-	{SDL_GAMEPAD_BUTTON_DPAD_RIGHT,JOYPAD_RGT},
-	{ SDL_GAMEPAD_BUTTON_SOUTH,JOYPAD_B},
-	{ SDL_GAMEPAD_BUTTON_EAST,JOYPAD_A},
-	{ SDL_GAMEPAD_BUTTON_NORTH,JOYPAD_X},
-	{ SDL_GAMEPAD_BUTTON_WEST,JOYPAD_Y},
-	{ SDL_GAMEPAD_BUTTON_BACK,JOYPAD_SELECT},
-	{ SDL_GAMEPAD_BUTTON_START,JOYPAD_START},
-	{ SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER,JOYPAD_TR},
-	{ SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,JOYPAD_TL},
-};
 
 static const Keys2Joy MenuKeyMatrix[] = {
 	{SDL_SCANCODE_UP,JOYPAD_UP},
@@ -541,6 +573,8 @@ static const Pad2Joy MenuPadMatrix[] = {
 	{ SDL_GAMEPAD_BUTTON_SOUTH,JOYPAD_A},
 	{ SDL_GAMEPAD_BUTTON_EAST,JOYPAD_B},
 	{ SDL_GAMEPAD_BUTTON_BACK,JOYPAD_B},
+	{ SDL_GAMEPAD_BUTTON_GUIDE,JOYPAD_B},
+	{ SDL_GAMEPAD_BUTTON_MISC1,JOYPAD_B},
 };
 
 static const char *CheatPtr[] = {		/* Cheat strings */
@@ -556,13 +590,56 @@ static const char *CheatPtr[] = {		/* Cheat strings */
 static Word Cheat;			/* Which cheat is active */
 static Word CheatIndex;	/* Index to the cheat string */
 
+static Boolean SelectWeapon(int weapon)
+{
+	switch (weapon) {
+	case 0:
+		gamestate.pendingweapon = WP_KNIFE;
+		return TRUE;
+	case 1:
+		if (gamestate.ammo) {
+			gamestate.pendingweapon = WP_PISTOL;
+			return TRUE;
+		}
+		break;
+	case 2:
+		if (gamestate.ammo && gamestate.machinegun) {
+			gamestate.pendingweapon = WP_MACHINEGUN;
+			return TRUE;
+		}
+		break;
+	case 3:
+		if (gamestate.ammo && gamestate.chaingun) {
+			gamestate.pendingweapon = WP_CHAINGUN;
+			return TRUE;
+		}
+		break;
+	case 4:
+		if (gamestate.gas && gamestate.flamethrower) {
+			gamestate.pendingweapon = WP_FLAMETHROWER;
+			return TRUE;
+		}
+		break;
+	case 5:
+		if (gamestate.missiles && gamestate.missile) {
+			gamestate.pendingweapon = WP_MISSILE;
+			return TRUE;
+		}
+		break;
+	default:
+		break;
+	}
+	return FALSE;
+}
+
 exit_t ReadSystemJoystick(void)
 {
-	Word i;
+	int i;
+	int xrel=0;
 	Word Index;
 	SDL_Event event;
 	const bool *Keys;
-	const Pad2Joy *PadPtr;
+	const SDL_GamepadButton *PadPtr;
 	const SDL_Keycode *KeyPtr = KeyBinds;
 
 	joystick1 = 0;			/* Assume that joystick not moved */
@@ -581,6 +658,8 @@ exit_t ReadSystemJoystick(void)
 		} else if (event.type == SDL_EVENT_MOUSE_BUTTON_UP) {
 			mousebuttons &= ~SDL_BUTTON_MASK(event.button.button);
 		} else if ((event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat && event.key.key == SDLK_ESCAPE)
+			|| (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN
+				&& (event.gbutton.button == SDL_GAMEPAD_BUTTON_GUIDE || event.gbutton.button == SDL_GAMEPAD_BUTTON_MISC1))
 			|| event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
 			PauseExited = TRUE;
 			return PauseMenu(TRUE);
@@ -643,71 +722,65 @@ exit_t ReadSystemJoystick(void)
 					}
 				} while (++Index<8);		/* All words scanned? */
 			}
-			switch (i) {		/* Use the SCAN code to make sure I hit the right key! */
-				case SDLK_1 :		/* 1 */
-					gamestate.pendingweapon = WP_KNIFE;
-					break;
-				case SDLK_2 : 	/* 2 */
-					if (gamestate.ammo) {
-						gamestate.pendingweapon = WP_PISTOL;
-					}
-					break;
-				case SDLK_3 :		/* 3 */
-					if (gamestate.ammo && gamestate.machinegun) {
-						gamestate.pendingweapon = WP_MACHINEGUN;
-					}
-					break;
-				case SDLK_4 :		/* 4 */
-					if (gamestate.ammo && gamestate.chaingun) {
-						gamestate.pendingweapon = WP_CHAINGUN;
-					}
-					break;
-				case SDLK_5 :		/* 5 */
-					if (gamestate.gas && gamestate.flamethrower) {
-						gamestate.pendingweapon = WP_FLAMETHROWER;
-					}
-					break;
-				case SDLK_6 :		/* 6 */
-					if (gamestate.missiles && gamestate.missile) {
-						gamestate.pendingweapon = WP_MISSILE;
-					}
-					break;
-			}
+			SelectWeapon(i - SDLK_1);		/* Use the SCAN code to make sure I hit the right key! */
 			if (event.key.scancode == KeyBinds[8])
 				joystick1 = JOYPAD_START;
-		} else if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
-			PadPtr = GamepadMatrix;
-			for (i = 0; i < ARRAYLEN(GamepadMatrix); i++) {
-				if (PadPtr->Code == event.gbutton.button) {
-					if (!event.key.repeat || (PadPtr->JoyValue != JOYPAD_A && PadPtr->JoyValue != JOYPAD_B))
-						joystick1 |= PadPtr->JoyValue;
+		} else if (event.type == SDL_EVENT_JOYSTICK_BUTTON_DOWN) {
+			PadPtr = GamepadBinds;
+			for (i = 0; i < ARRAYLEN(GamepadBinds); i++) {
+				if (*PadPtr < 0 && -*PadPtr == event.jbutton.button) {
+					gamepad1 |= 1<<(i+4);
 					break;
 				}
-				PadPtr++;					/* Next index */
+				PadPtr++;
 			}
-		} else if (event.type == SDL_EVENT_GAMEPAD_AXIS_MOTION) {
-			if (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTX) {
-				if (joystick1&JOYPAD_TR) {	/* Strafing? */
-					mousex += (event.gaxis.value - joystickx)/0x100;
-				} else {
-					mouseturn -= (event.gaxis.value - joystickx)/0x100;
+		} else if (event.type == SDL_EVENT_JOYSTICK_BUTTON_DOWN) {
+			PadPtr = GamepadBinds;
+			for (i = 0; i < ARRAYLEN(GamepadBinds); i++) {
+				if (*PadPtr < 0 && -*PadPtr == event.jbutton.button) {
+					gamepad1 &= ~(1<<(i+4));
+					break;
 				}
-				joystickx = event.gaxis.value;
-			} else if (event.gaxis.axis == SDL_GAMEPAD_AXIS_LEFTY) {
-				mousey += (event.gaxis.value - joysticky)/0x100;
-				joysticky = event.gaxis.value;
+				PadPtr++;
+			}
+		} else if (event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN) {
+			PadPtr = GamepadBinds;
+			for (i = 0; i < ARRAYLEN(GamepadBinds); i++) {
+				if (*PadPtr >= 0 && *PadPtr == event.gbutton.button) {
+					gamepad1 |= 1<<(i+4);
+					break;
+				}
+				PadPtr++;
+			}
+		} else if (event.type == SDL_EVENT_GAMEPAD_BUTTON_UP) {
+			PadPtr = GamepadBinds;
+			for (i = 0; i < ARRAYLEN(GamepadBinds); i++) {
+				if (*PadPtr >= 0 && *PadPtr == event.gbutton.button) {
+					gamepad1 &= ~(1<<(i+4));
+					break;
+				}
+				PadPtr++;
 			}
 		} else if (event.type == SDL_EVENT_MOUSE_MOTION && MouseEnabled) {
-			if (joystick1&JOYPAD_TR) {	/* Strafing? */
-				mousex += event.motion.xrel;	/* Move horizontally for strafe */
-			} else {
-				mouseturn -= event.motion.xrel;	/* Turn left or right */
-			}
+			xrel += event.motion.xrel;
 			mousey += event.motion.yrel;		/* Forward motion */
 		}
 	}
+	joystick1 |= gamepad1;
 	if (joystick1 & JOYPAD_START)
 		return 0;
+	if (mousewheel > 0) {
+		Index = gamestate.pendingweapon;
+		for (i = 0; i != mousewheel; i++) {
+			while (!SelectWeapon((Index = Index < NUMWEAPONS - 1 ? Index + 1 : 0)));
+		}
+	} else if (mousewheel < 0) {
+		Index = gamestate.pendingweapon;
+		for (i = 0; i != mousewheel; i--) {
+			while (!SelectWeapon((Index = Index > 0 ? Index - 1 : NUMWEAPONS - 1)));
+		}
+	}
+
 	Keys = SDL_GetKeyboardState(NULL);
 	i = 0;					/* Init the count */
 	do {
@@ -718,18 +791,23 @@ exit_t ReadSystemJoystick(void)
 	if (MouseEnabled) {
 		if (mousebuttons & SDL_BUTTON_LMASK)
 			joystick1 |= JOYPAD_B;
-		//if (mousebuttons & SDL_BUTTON_RMASK)
-			//joystick1 |= JOYPAD_A;
+		if (mousebuttons & SDL_BUTTON_RMASK)
+			joystick1 |= JOYPAD_A|JOYPAD_X;
 	}
-
-	if (joystick1 & JOYPAD_X) {		/* Handle the side scroll (Special case) */
+	if (joystickL2 >= SDL_JOYSTICK_AXIS_MAX/2 || joystickR2 >= SDL_JOYSTICK_AXIS_MAX/2)
+		joystick1 |= JOYPAD_B;
+	if (!!(MoveFlags & 2) ^ !!(joystick1 & JOYPAD_X)) {		/* Handle the side scroll (Special case) */
+		mousex += xrel + joystickx/0x1000;
 		if (joystick1&JOYPAD_LFT) {
 			joystick1 = (joystick1 & ~JOYPAD_LFT) | JOYPAD_TL;
 		} else if (joystick1&JOYPAD_RGT) {
 			joystick1 = (joystick1 & ~JOYPAD_RGT) | JOYPAD_TR;
 		}
 		joystick1 &= ~JOYPAD_X;
-	}
+	} else
+		mouseturn -= xrel + joystickx/0x1000;
+	mouseturn -= joystickx2/0x1000;
+	mousey += joysticky/0x1000;
 	return 0;
 }
 
@@ -751,11 +829,11 @@ int ReadMenuJoystick(void)
 		if (ProcessGlobalEvent(&event)) {
 			if (joystickx >= JOYDEADZONE && oldjoyx < JOYDEADZONE)
 				joystick1 |= JOYPAD_RGT;
-			else if (joystickx <= -JOYDEADZONE && oldjoyx > JOYDEADZONE)
+			else if (joystickx <= -JOYDEADZONE && oldjoyx > -JOYDEADZONE)
 				joystick1 |= JOYPAD_LFT;
 			if (joysticky >= JOYDEADZONE && oldjoyy < JOYDEADZONE)
 				joystick1 |= JOYPAD_DN;
-			else if (joysticky <= -JOYDEADZONE && oldjoyy > JOYDEADZONE)
+			else if (joysticky <= -JOYDEADZONE && oldjoyy > -JOYDEADZONE)
 				joystick1 |= JOYPAD_UP;
 			if (event.type == SDL_EVENT_WINDOW_RESIZED)
 				return SDL_MAX_SINT32;
@@ -775,8 +853,7 @@ int ReadMenuJoystick(void)
 			PadPtr = MenuPadMatrix;
 			for (i = 0; i < ARRAYLEN(MenuPadMatrix); i++) {
 				if (PadPtr->Code == event.gbutton.button) {
-					if (!event.key.repeat || (PadPtr->JoyValue != JOYPAD_A && PadPtr->JoyValue != JOYPAD_B))
-						joystick1 |= PadPtr->JoyValue;
+					joystick1 |= PadPtr->JoyValue;
 					break;
 				}
 				PadPtr++;					/* Next index */
@@ -1475,10 +1552,21 @@ static const char *const KeyPrefNames[12] = {
 static int PrefsIniHandler(void* User, const char* Section, const char* Name, const char* Value)
 {
 	int i;
-	SDL_Scancode Code;
+	long Code;
+	char *End;
 	if (SDL_strcasecmp(Section, "main") == 0) {
 		if (SDL_strcasecmp(Name, "mouse") == 0) {
 			MouseEnabled = StrToBool(Value);
+		} else if (SDL_strcasecmp(Name, "alwaysrun") == 0) {
+			if (StrToBool(Value))
+				MoveFlags |= 1;
+			else
+				MoveFlags &= ~1;
+		} else if (SDL_strcasecmp(Name, "alwaysstrafe") == 0) {
+			if (StrToBool(Value))
+				MoveFlags |= 2;
+			else
+				MoveFlags &= ~2;
 		} else if (SDL_strcasecmp(Name, "governor") == 0) {
 			SlowDown = StrToBool(Value);
 		} else if (SDL_strcasecmp(Name, "difficulty") == 0) {
@@ -1513,8 +1601,25 @@ static int PrefsIniHandler(void* User, const char* Section, const char* Name, co
 		for (i = 0; i < ARRAYLEN(KeyBinds); i++) {
 			if (SDL_strcasecmp(Name, KeyPrefNames[i]) == 0) {
 				Code = SDL_GetScancodeFromName(Value);
-				if (Code != SDL_SCANCODE_UNKNOWN)
+				if (Code != SDL_SCANCODE_UNKNOWN && Code != SDL_SCANCODE_ESCAPE
+						&& Code != SDL_SCANCODE_1 && Code != SDL_SCANCODE_2
+						&& Code != SDL_SCANCODE_3 && Code != SDL_SCANCODE_4
+						&& Code != SDL_SCANCODE_5 && Code != SDL_SCANCODE_5)
 					KeyBinds[ARRAYLEN(KeyBinds)-1-i] = Code;
+			}
+		}
+	} else if (SDL_strcasecmp(Section, "gamepad") == 0) {
+		for (i = 0; i < ARRAYLEN(GamepadBinds); i++) {
+			if (SDL_strcasecmp(Name, KeyPrefNames[i]) == 0) {
+				Code = SDL_GetGamepadButtonFromString(Value);
+				if (Code != SDL_GAMEPAD_BUTTON_INVALID && Code < SDL_GAMEPAD_BUTTON_COUNT
+						&& Code != SDL_GAMEPAD_BUTTON_MISC1 && Code != SDL_GAMEPAD_BUTTON_GUIDE)
+					GamepadBinds[ARRAYLEN(GamepadBinds)-1-i] = Code;
+				else if (SDL_strncasecmp(Name, "joy", 3)) {
+					Code = SDL_strtoul(Name+3, &End, 10);
+					if (Code < INT_MAX && End != Name+3)
+						GamepadBinds[ARRAYLEN(GamepadBinds)-1-i] = -Code;
+				}
 			}
 		}
 	} else if (SDL_strcasecmp(Section, "folders") == 0) {
@@ -1569,6 +1674,7 @@ void SavePrefs(void)
 	char *Buf;
 	char *End;
 	char *B;
+	const char *Button;
 	SDL_Storage *Storage;
 	int i;
 
@@ -1576,7 +1682,7 @@ void SavePrefs(void)
 	if (!Storage)
 		return;
 
-	BufLen = 4096;
+	BufLen = 8192;
 	BufLen += LastSaveDir ? strlen(LastSaveDir) : 0;
 	BufLen += LastScenarioDir ? strlen(LastScenarioDir) : 0;
 	Buf = AllocSomeMem(BufLen);
@@ -1585,6 +1691,8 @@ void SavePrefs(void)
 
 	B += snprintf(B, End - B, "[Main]\n");
 	B += snprintf(B, End - B, "Mouse = %d\n", MouseEnabled);
+	B += snprintf(B, End - B, "AlwaysRun = %d\n", !!(MoveFlags & 1));
+	B += snprintf(B, End - B, "AlwaysStrafe = %d\n", !!(MoveFlags & 2));
 	B += snprintf(B, End - B, "Governor = %d\n", SlowDown);
 	B += snprintf(B, End - B, "Difficulty = %d\n", difficulty);
 	B += snprintf(B, End - B, "\n");
@@ -1601,6 +1709,17 @@ void SavePrefs(void)
 	B += snprintf(B, End - B, "[Keys]\n");
 	for (i = 0; i < ARRAYLEN(KeyBinds); i++)
 		B += snprintf(B, End - B, "%s = %s\n", KeyPrefNames[i], SDL_GetScancodeName(KeyBinds[11-i]));
+	B += snprintf(B, End - B, "\n");
+	B += snprintf(B, End - B, "[Gamepad]\n");
+	for (i = 0; i < ARRAYLEN(GamepadBinds); i++) {
+		if (GamepadBinds[11-i] >= 0) {
+			Button = SDL_GetGamepadStringForButton(GamepadBinds[11-i]);
+			if (Button)
+				B += snprintf(B, End - B, "%s = %s\n", KeyPrefNames[i], Button);
+		} else {
+			B += snprintf(B, End - B, "%s = joy%d\n", KeyPrefNames[i], -GamepadBinds[11-i]);
+		}
+	}
 	B += snprintf(B, End - B, "\n");
 	B += snprintf(B, End - B, "[Folders]\n");
 	if (LastSaveDir)

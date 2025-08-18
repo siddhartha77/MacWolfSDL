@@ -158,7 +158,7 @@ void ControlMovement(void)
 	xmove = 0;				/* Init my deltas */
 	ymove = 0;
 
-	if (buttonstate[bt_run]) {
+	if (!!(MoveFlags & 1) ^ buttonstate[bt_run]) {
 		turn = FASTTURN*TicCount;	/* Really fast turn */
 		move = RUNSPEED*TicCount;
 	} else {

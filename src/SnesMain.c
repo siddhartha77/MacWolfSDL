@@ -93,6 +93,7 @@ exit_t RunAutoMap(void)
 	Word Width,Height;
 	Word CenterX,CenterY;
 	Word oldjoy,newjoy;
+	short oldjoyx,oldjoyy;
 	exit_t PS;
 
 	MakeSmallFont();				/* Make the tiny font */
@@ -122,6 +123,14 @@ exit_t RunAutoMap(void)
 			PS = ReadSystemJoystick();
 			if (PS || playstate != EX_AUTOMAP)
 				goto Done;
+			if (joysticky < -8000)
+				joystick1 |= JOYPAD_UP;
+			if (joystickx < -8000)
+				joystick1 |= JOYPAD_LFT;
+			if (joystickx > 8000)
+				joystick1 |= JOYPAD_RGT;
+			if (joysticky > 8000)
+				joystick1 |= JOYPAD_DN;
 			if (joystick1 != oldjoy || PauseExited)
 				break;
 			WaitTick();
@@ -131,16 +140,16 @@ exit_t RunAutoMap(void)
 		if (newjoy & (JOYPAD_START|JOYPAD_SELECT|JOYPAD_A|JOYPAD_B|JOYPAD_X|JOYPAD_Y)) {
 			playstate = EX_STILLPLAYING;
 		}
-		if ((newjoy & JOYPAD_UP && vy) || (joysticky < -8000)) {
+		if ((newjoy & JOYPAD_UP) && vy) {
 			--vy;
 		}
-		if ((newjoy & JOYPAD_LFT && vx) || (joystickx < -8000)) {
+		if ((newjoy & JOYPAD_LFT) && vx) {
 			--vx;
 		}
-		if ((newjoy & JOYPAD_RGT && vx<(MAPSIZE-1)) || (joystickx > 8000)) {
+		if ((newjoy & JOYPAD_RGT) && vx<(MAPSIZE-1)) {
 			++vx;
 		}
-		if ((newjoy & JOYPAD_DN && vy <(MAPSIZE-1)) || (joysticky > 8000)) {
+		if ((newjoy & JOYPAD_DN) && vy <(MAPSIZE-1)) {
 			++vy;
 		}
 	}
@@ -156,6 +165,7 @@ Done:
 	mousey = 0;
 	mouseturn = 0;
 	mousebuttons = 0;
+	gamepad1 = 0;
 	return PS;
 }
 
@@ -175,6 +185,7 @@ void StartGame(void)
 	mousey = 0;
 	mouseturn = 0;
 	mousebuttons = 0;
+	gamepad1 = 0;
 	GameLoop();			/* Play the game */
 	UngrabMouse();
 	StopSong();			/* Make SURE music is off */
@@ -206,7 +217,8 @@ void TitleScreen (void)
 	BlastScreen();
 	for (;;) {
 		Key = WaitTicksEvent(0);		/* Wait for event */
-		if (Key != '\x1b' && Key != -3)
+		if (Key != '\x1b' && Key != -3
+				&& Key != -256-SDL_GAMEPAD_BUTTON_GUIDE && Key != -256-SDL_GAMEPAD_BUTTON_MISC1)
 			break;
 		PSTmp = PauseMenu(FALSE);
 		if (PSTmp > 0) {

@@ -36,21 +36,22 @@ More custom scenarios can be downloaded at:
 
 ### Default Controls
 
-| Key              | Action            |
-| ---------------- | ----------------- |
-| Arrow Keys       | Move & Turn       |
-| Z, X             | Strafe Left/Right |
-| Left Ctrl        | Attack            |
-| Space            | Use Door/Switch   |
-| Left Shift       | Run               |
-| Left Alt         | Strafe            |
-| Tab              | Cycle Weapons     |
-| 1, 2, 3, 4, 5, 6 | Select Weapon     |
-| /                | Auto Map          |
-| Escape           | Pause/Menu        |
+| Gamepad       | Key              | Action            |
+| ------------- | ---------------- | ----------------- |
+| D-Pad         | Arrow Keys       | Move & Turn       |
+| Shoulders     | Z, X             | Strafe Left/Right |
+| A/⨯, Triggers | Left Ctrl        | Attack            |
+| X/□           | Space            | Use Door/Switch   |
+| B/◯           | Left Shift       | Run               |
+| Y/△           | Left Alt         | Strafe            |
+| View/Create   | Tab              | Cycle Weapons     |
+|               | 1, 2, 3, 4, 5, 6 | Select Weapon     |
+| Menu/Options  | /                | Auto Map          |
+| Guide         | Escape           | Pause/Menu        |
 
 The menu can also be accessed by pressing Escape at the title screen. In-game
-controls can be adjusted using `Options → Configure Keyboard` in the menu.
+controls can be adjusted using `Configure Keyboard` or `Configure Gamepad` in
+the Options menu.
 
 ## Building
 

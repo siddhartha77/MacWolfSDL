@@ -844,8 +844,12 @@ extern Boolean selectheld;				/* Weapon select held down */
 extern Boolean attackheld;				/* Attack button held down? */
 extern Boolean buttonstate[NUMBUTTONS];	/* Current input */
 extern Word joystick1;					/* Joystick value */
+extern Word gamepad1;					/* Gamepad value */
 extern short joystickx;					/* Joystick X axis */
 extern short joysticky;					/* Joystick Y axis */
+extern short joystickx2;				/* Joystick X axis right stick */
+extern short joystickL2;				/* Joystick left trigger */
+extern short joystickR2;				/* Joystick right trigger */
 extern int mousex;						/* Mouse x movement */
 extern int mousey;						/* Mouse y movement */
 extern int mouseturn;					/* Mouse turn factor */
@@ -879,6 +883,7 @@ extern Word bspcoord[4];			/* Rect for the BSP search */
 extern Word TicCount;				/* Ticks since last screen draw */
 extern Word LastTicCount;			/* Tick value at start of render */
 extern Word MacVidSize;		/* Current 0 = 320, 1 = 512, 2 = 640 */
+extern Word MoveFlags; 		/* Bit 0 = Always Run, Bit 1 = Always Strafe */
 extern Word SlowDown;		/* If true, then limit game to 30hz */
 extern Word MouseEnabled;	/* Allow mouse control */
 extern Word GameViewSize;	/* Size of the game screen */
